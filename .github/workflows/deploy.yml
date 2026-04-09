@@ -125,3 +125,5 @@ jobs:
             docker compose exec -T app php artisan migrate --force --no-interaction
 
             echo "✅ Deployment selesai!"
+            sleep 2
+            exit 0
