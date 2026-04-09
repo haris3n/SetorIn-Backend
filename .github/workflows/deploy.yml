@@ -102,26 +102,29 @@ jobs:
 
             echo "🚀 Mulai deployment..."
 
-            # Login ke GHCR
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # Login ke GHCR menggunakan Personal Access Token (Lebih stabil)
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
             # Masuk ke folder project
+            # Pastikan folder ini sudah ada di VPS kamu!
             cd /home/${{ secrets.SERVER_USER }}/RPL2B-Kelompok-8
 
-            # Pull image terbaru
-            docker pull ghcr.io/${{ github.repository }}:latest
+            # Pull image terbaru (untuk menghindari cache lama)
+            docker compose pull app
 
-            # Update container tanpa downtime besar
+            # Jalankan container
             docker compose up -d --remove-orphans
 
-            # Tunggu container siap
-            echo "⏳ Menunggu container ready..."
-
-            until docker compose exec -T db mysqladmin ping -h "localhost" --silent; do
-              sleep 2
-            done
+            echo "⏳ Menunggu Database Ready..."
+            # Cara lebih aman mengecek DB tanpa mysqladmin jika belum setup
+            sleep 10 
 
             # Jalankan migrasi database
+            echo "🏃 Running Migrations..."
             docker compose exec -T app php artisan migrate --force --no-interaction
+
+            # Opsional: Clear cache agar perubahan terasa
+            docker compose exec -T app php artisan config:cache
+            docker compose exec -T app php artisan route:cache
 
             echo "✅ Deployment selesai!"
