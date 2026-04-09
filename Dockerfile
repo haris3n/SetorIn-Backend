@@ -1,7 +1,6 @@
-# Dockerfile
 FROM php:8.2-fpm-alpine
 
-# Install dependencies sistem
+# Install dependencies sistem (Lengkap untuk Alpine)
 RUN apk add --no-cache \
     nginx \
     nodejs \
@@ -14,10 +13,15 @@ RUN apk add --no-cache \
     libpng-dev \
     libzip-dev \
     oniguruma-dev \
-    libxml2-dev
+    libxml2-dev \
+    icu-dev \
+    freetype-dev \
+    libjpeg-turbo-dev
 
-# Install ekstensi PHP
-RUN docker-php-ext-install \
+# Install ekstensi PHP 
+# Khusus GD di Alpine perlu konfigurasi library jpeg dan freetype
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install \
     pdo_mysql \
     mbstring \
     exif \
@@ -25,7 +29,8 @@ RUN docker-php-ext-install \
     bcmath \
     gd \
     opcache \
-    zip
+    zip \
+    intl
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -35,8 +40,11 @@ WORKDIR /var/www/html
 # Copy file project
 COPY . .
 
-# Install dependencies Laravel
-RUN composer install --optimize-autoloader --no-dev
+# Tambahkan baris ini sebelum composer install untuk menghindari masalah permission saat build
+RUN mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache
+
+# Install dependencies Laravel (Gunakan --no-scripts untuk menghindari error jika belum ada env)
+RUN composer install --optimize-autoloader --no-dev --no-scripts
 
 # Set permission
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
