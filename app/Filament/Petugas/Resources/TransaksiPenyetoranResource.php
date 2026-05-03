@@ -170,6 +170,12 @@ class TransaksiPenyetoranResource extends Resource
             ->defaultSort('tgl_setor', 'desc')
             ->actions([
                 Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Edit')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('warning')
+                    ->visible(fn ($record) => $record->status !== 'selesai' && $record->status !== 'dibatalkan')
+                    ->tooltip('Hanya transaksi yang belum selesai yang dapat diedit'),
             ])
             ->bulkActions([]);
     }
@@ -177,8 +183,9 @@ class TransaksiPenyetoranResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListTransaksiPenyetorans::route('/'),
+            'index'  => Pages\ListTransaksiPenyetorans::route('/'),
             'create' => Pages\CreateTransaksiPenyetoran::route('/create'),
+            'edit'   => Pages\EditTransaksiPenyetoran::route('/{record}/edit'),
         ];
     }
 }

@@ -45,6 +45,10 @@ class AdminPanelProvider extends PanelProvider
                 Widgets\AccountWidget::class,
                 \App\Filament\Admin\Widgets\StatsOverview::class,
                 \App\Filament\Admin\Widgets\TransaksiChart::class,
+                \App\Filament\Admin\Widgets\BeratSampahChart::class,
+                \App\Filament\Admin\Widgets\MisiStatsWidget::class,
+                \App\Filament\Admin\Widgets\BankSampahStatsWidget::class,
+                \App\Filament\Admin\Widgets\TopNasabahWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

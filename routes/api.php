@@ -4,8 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Nasabah\{ProfilController, TransaksiController, SaldoController, MisiController};
 use App\Http\Controllers\Api\Petugas\{TransaksiPetugasController, JadwalController};
-use App\Http\Controllers\Api\Admin\{PenggunaController, BankSampahController, HargaSampahController, MisiAdminController, PenarikanController, LaporanController};
-use App\Http\Controllers\Api\Admin\KontenEdukasiController;
+use App\Http\Controllers\Api\Admin\{PenggunaController, BankSampahController, HargaSampahController, MisiAdminController, PenarikanController, LaporanController, KontenEdukasiController};
 
 /*
 |--------------------------------------------------------------------------
@@ -72,10 +71,11 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('/laporan',               [LaporanController::class, 'index']);
         Route::get('/laporan/export',         [LaporanController::class, 'export']);
         Route::get('/laporan/export-detail',  [LaporanController::class, 'exportDetail']);
+
+        // ── Konten Edukasi (dipindah ke sini agar terproteksi) ──
+        Route::apiResource('/konten-edukasi', KontenEdukasiController::class);
+        Route::put('/konten-edukasi/{id}/publish', [KontenEdukasiController::class, 'publish']);
+        Route::put('/konten-edukasi/{id}/archive', [KontenEdukasiController::class, 'archive']);
     });
 });
-
-// di dalam Route::middleware('role:admin')->prefix('admin')
-Route::apiResource('/konten-edukasi', KontenEdukasiController::class);
-Route::put('/konten-edukasi/{id}/publish', [KontenEdukasiController::class, 'publish']);
-Route::put('/konten-edukasi/{id}/archive', [KontenEdukasiController::class, 'archive']);
+

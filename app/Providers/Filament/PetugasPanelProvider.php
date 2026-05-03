@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Petugas\Pages\Dashboard;
 use App\Filament\Petugas\Pages\ProfilPetugas;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -36,12 +37,13 @@ class PetugasPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Petugas/Pages'), for: 'App\\Filament\\Petugas\\Pages')
             ->discoverWidgets(in: app_path('Filament/Petugas/Widgets'), for: 'App\\Filament\\Petugas\\Widgets')
             ->pages([
-                Pages\Dashboard::class,
+                Dashboard::class,
                 ProfilPetugas::class,
             ])
             ->widgets([
                 Widgets\AccountWidget::class,
-                Widgets\FilamentInfoWidget::class,
+                \App\Filament\Petugas\Widgets\PetugasStats::class,
+                \App\Filament\Petugas\Widgets\TransaksiPetugasChart::class,
             ])
             ->middleware([
                 EncryptCookies::class,

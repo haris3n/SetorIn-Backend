@@ -12,8 +12,21 @@ class Dashboard extends BaseDashboard
     public function getWidgets(): array
     {
         return [
+            // Baris 1 — Statistik Utama
             \App\Filament\Admin\Widgets\StatsOverview::class,
+
+            // Baris 2 — Grafik Tren
             \App\Filament\Admin\Widgets\TransaksiChart::class,
+            \App\Filament\Admin\Widgets\BeratSampahChart::class,
+
+            // Baris 3 — Ringkasan Misi
+            \App\Filament\Admin\Widgets\MisiStatsWidget::class,
+
+            // Baris 4 — Tabel Performa Bank Sampah
+            \App\Filament\Admin\Widgets\BankSampahStatsWidget::class,
+
+            // Baris 5 — Top Nasabah
+            \App\Filament\Admin\Widgets\TopNasabahWidget::class,
         ];
     }
 }
