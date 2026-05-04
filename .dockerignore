@@ -1,0 +1,48 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Dependencies (Biarkan Docker yang menginstallnya sendiri pakai composer/npm)
+/node_modules
+/vendor
+
+# File Environment Lokal
+.env
+.env.example
+.env.backup
+.env.testing
+
+# Cache & Logs Laravel
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
+/storage/framework/cache/*
+!/storage/framework/cache/.gitignore
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+/storage/framework/testing/*
+!/storage/framework/testing/.gitignore
+
+# SQLite Database Lokal (Jangan bawa database laptop ke server)
+/database/*.sqlite
+/database/*.sqlite-journal
+
+# File Docker & OS
+Dockerfile
+docker-compose.yml
+.dockerignore
+.DS_Store
+Thumbs.db
+
+# Testing & Editor
+phpunit.xml
+.phpunit.result.cache
+.editorconfig
+.vscode
+.idea
+*.sublime-*
+*.log
