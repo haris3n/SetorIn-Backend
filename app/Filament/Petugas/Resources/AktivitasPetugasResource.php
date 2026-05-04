@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Auth;
 
 class AktivitasPetugasResource extends Resource
 {
-    protected static ?string $model = AktivitasPetugas::class; //model
+    protected static ?string $model = AktivitasPetugas::class; 
 
     protected static ?string $navigationIcon = 'heroicon-o-clock';
 
