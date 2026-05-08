@@ -10,7 +10,7 @@ class Dashboard extends BaseDashboard
     protected static ?string $title = 'Petugas Dashboard';
 
     public function getWidgets(): array
-    {
+{
         return [
             Widget::live(
                 // ... other widget configurations ...
