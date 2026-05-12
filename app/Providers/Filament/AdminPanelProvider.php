@@ -25,8 +25,8 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->id('admin')
             ->path('admin')
-            ->login()
-            ->colors(['primary' => Color::Green])
+            ->login(\App\Filament\Admin\Pages\Auth\Login::class)
+            ->colors(['primary' => Color::hex('#16A34A')])
             ->brandName('Setor.in Admin')
             ->discoverResources(
                 in: app_path('Filament/Admin/Resources'),
@@ -61,7 +61,11 @@ class AdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
-            ->authMiddleware([Authenticate::class])
+            ->authMiddleware([
+                Authenticate::class,
+                \App\Http\Middleware\EnsureRole::class . ':admin',
+            ])
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->authGuard('web');
     }
 }

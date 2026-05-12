@@ -27,10 +27,10 @@ class PetugasPanelProvider extends PanelProvider
         return $panel
             ->id('petugas')
             ->path('petugas')
-            ->login()
+            ->login(\App\Filament\Petugas\Pages\Auth\Login::class)
             ->brandName('Setor.in Petugas')
             ->colors([
-                'primary' => Color::Blue,
+                'primary' => Color::hex('#16A34A'),
             ])
             // Lokasi Resource, Pages, dan Widgets khusus Panel Petugas
             ->discoverResources(in: app_path('Filament/Petugas/Resources'), for: 'App\\Filament\\Petugas\\Resources')
@@ -58,7 +58,9 @@ class PetugasPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                \App\Http\Middleware\EnsureRole::class . ':petugas',
             ])
+            ->viteTheme('resources/css/filament/petugas/theme.css')
             ->authGuard('web');
     }
 }
