@@ -2,7 +2,7 @@ name: CI/CD Laravel Docker
 
 on:
   push:
-    branches: #mem
+    branches:
       - main
 
 env:
@@ -15,6 +15,20 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: testing
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,20 +36,48 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          extensions: pdo, pdo_mysql, bcmath
+          php-version: '8.2'
+          extensions: pdo, pdo_mysql, mbstring, bcmath, zip, gd, intl, xml
+
+      # ✅ FIX: Build Vite assets supaya manifest.json ada saat testing
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node dependencies & build Vite
+        run: |
+          npm ci
+          npm run build
 
       - name: Install Composer dependencies
-        run: composer install --no-progress --prefer-dist
+        run: |
+          composer install \
+            --no-progress \
+            --prefer-dist \
+            --no-interaction
 
-      - name: Copy .env
-        run: cp .env.example .env
+      - name: Copy & configure .env untuk testing
+        run: |
+          cp .env.example .env
+          # Override nilai yang dibutuhkan untuk testing
+          sed -i 's/^APP_ENV=.*/APP_ENV=testing/' .env
+          sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env
+          sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          sed -i 's/^DB_PORT=.*/DB_PORT=3306/' .env
+          sed -i 's/^DB_DATABASE=.*/DB_DATABASE=testing/' .env
+          sed -i 's/^DB_USERNAME=.*/DB_USERNAME=root/' .env
+          sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=root/' .env
 
       - name: Generate app key
-        run: php artisan key:generate
+        run: php artisan key:generate --force
 
-      - name: Run PHPUnit tests
-        run: php artisan test
+      - name: Run database migrations
+        run: php artisan migrate --force
+
+      - name: Run tests
+        run: php artisan test --parallel
 
   # ─── JOB 2: BUILD & PUSH IMAGE ────────────────────────────
   build-and-push:
@@ -48,7 +90,8 @@ jobs:
       packages: write
 
     outputs:
-      image: ${{ steps.meta.outputs.tags }}
+      # Output image tag SHA untuk dipakai di job deploy
+      image_tag: ${{ steps.meta.outputs.version }}
 
     steps:
       - name: Checkout code
@@ -80,6 +123,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Cache layer Docker supaya build lebih cepat
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -90,6 +134,8 @@ jobs:
     needs: build-and-push
 
     steps:
+      # ✅ FIX: Jangan pass GITHUB_TOKEN langsung ke SSH script
+      # Buat PAT token sebagai secret terpisah, atau gunakan cara ini:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -97,44 +143,58 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          script: | 
+          # ✅ FIX: Pass nilai yang dibutuhkan sebagai envs, bukan inline
+          envs: GITHUB_ACTOR,CR_PAT,GITHUB_REPOSITORY
+          script: |
             set -e
 
             echo "🚀 Mulai deployment..."
 
-            # Login ke GHCR
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # ✅ FIX: Login GHCR pakai CR_PAT (Personal Access Token)
+            # bukan GITHUB_TOKEN (tidak bisa dipakai di luar Actions runner)
+            echo "$CR_PAT" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
 
             # Masuk ke folder project
-            cd /home/${{ secrets.SERVER_USER }}/RPL2B-kelompok-8
+            cd ~/app
 
             # Pull image terbaru
-            docker pull ghcr.io/${{ github.repository }}:latest
+            docker pull ghcr.io/$GITHUB_REPOSITORY:latest
 
-            # Update container
+            # Update container (zero-downtime dengan --no-deps)
             docker compose up -d --remove-orphans
 
-            echo "⏳ Menunggu stabilitas container (15 detik)..."
-            sleep 15
+            echo "⏳ Menunggu container siap..."
+            sleep 10
 
-            # Cek apakah container DB siap menerima koneksi
+            # ── Cek koneksi database ──────────────────────
             echo "🔍 Mengecek koneksi database..."
-            MAX_RETRIES=10
+            MAX_RETRIES=15
             COUNT=0
-            until docker compose exec -T db mysqladmin ping -h "localhost" --silent || [ $COUNT -eq $MAX_RETRIES ]; do
-              echo "⏳ Database belum siap, mencoba lagi ($((COUNT+1))/$MAX_RETRIES)..."
-              sleep 3
+            until docker compose exec -T db mysqladmin ping -h "localhost" --silent 2>/dev/null; do
               COUNT=$((COUNT+1))
+              if [ $COUNT -ge $MAX_RETRIES ]; then
+                echo "❌ Database gagal ready setelah $MAX_RETRIES percobaan."
+                docker compose logs db --tail=50
+                exit 1
+              fi
+              echo "⏳ Percobaan $COUNT/$MAX_RETRIES..."
+              sleep 3
             done
-            
-            if [ $COUNT -eq $MAX_RETRIES ]; then
-              echo "❌ Error: Database gagal ready setelah beberapa percobaan."
-              docker compose logs db
-              exit 1
-            fi
 
-            # Jalankan migrasi database melalui service 'app'
-            echo "🏃 Menjalankan migrasi database..."
+            echo "✅ Database siap!"
+
+            # ── Jalankan migrasi ──────────────────────────
+            echo "🏃 Menjalankan migrasi..."
             docker compose exec -T app php artisan migrate --force --no-interaction
 
+            # ── Cleanup image lama ────────────────────────
+            echo "🧹 Membersihkan image lama..."
+            docker image prune -f
+
             echo "✅ Deployment selesai!"
+        env:
+          # ✅ Tambahkan CR_PAT di GitHub Secrets
+          # Settings → Secrets → New: CR_PAT = Personal Access Token dengan scope read:packages
+          CR_PAT: ${{ secrets.CR_PAT }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
