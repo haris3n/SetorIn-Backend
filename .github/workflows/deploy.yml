@@ -2,7 +2,7 @@ name: CI/CD Laravel Docker
 
 on:
   push:
-    branches:
+    branches: #mem
       - main
 
 env:
